@@ -1,2 +1,2 @@
 # Hrnet
-Hrnet is implemented from 0
+Hrnet is implemented by myself
