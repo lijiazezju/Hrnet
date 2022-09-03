@@ -6,13 +6,12 @@ from torch.utils import data
 import os
 import transforms
 import numpy as np
-import tranforms
+import transforms
 import argparse
 from model import HRnet
 from my_dataset import Cocokeypoints
 
 def main(args):
-
     fixed_size = args.fixed_size
     heatmap_size = (fixed_size[0]//4, fixed_size[1]//4)
     kps_weights = np.array(
@@ -31,26 +30,26 @@ def main(args):
     lower_body_ids = (11, 12, 13, 14, 15, 16)
     flip_pairs = [[1, 2], [3, 4], [5, 6], [7, 8],
                        [9, 10], [11, 12], [13, 14], [15, 16]]
-
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     data_transforms = {
-        "train": tranforms.Compose([
-            tranforms.HalfBody(0.3, upper_body_ids, lower_body_ids),
-            tranforms.AffineTransform(scale=(0.65, 1.35), rotation=(-45, 45), fixed_size=fixed_size),
-            tranforms.RandomHorizontalFlip(0.5, flip_pairs),
-            tranforms.KeypointsToHeatMap(heatmap_hw=heatmap_size, gaussian_sigma=2, keypoints_weights=kps_weights),
-            tranforms.ToTensor(),
-            tranforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        "train": transforms.Compose([
+            transforms.HalfBody(0.3, upper_body_ids, lower_body_ids),
+            transforms.AffineTransform(scale=(0.65, 1.35), rotation=(-45, 45), fixed_size=fixed_size),
+            transforms.RandomHorizontalFlip(0.5, flip_pairs),
+            transforms.KeypointsToHeatMap(heatmap_hw=heatmap_size, gaussian_sigma=2, keypoints_weights=kps_weights),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ]),
-        "val": tranforms.Compose([
-            tranforms.AffineTransform(scale=(1.25, 1.25), fixed_size=fixed_size),
-            tranforms.ToTensor(),
-            tranforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        "val": transforms.Compose([
+            transforms.AffineTransform(scale=(1.25, 1.25), fixed_size=fixed_size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
     }
     data_root = args.data_path
     batch_size = args.batch_size
-    train_dataset = Cocokeypoints(data_root, "train", trainsform["train"], fixed_size=args.fixed_size)
-    val_dataset = Cocokeypoints(data_root, "val", train_dataset["val"], fixed_size=args.fixed_size)
+    train_dataset = Cocokeypoints(data_root, "train", data_transforms["train"], fixed_size=args.fixed_size)
+    val_dataset = Cocokeypoints(data_root, "val", data_transforms["val"], fixed_size=args.fixed_size)
 
     train_dataset = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, collate_fn=train_dataset.collate_fn)
     val_dataset = data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, collate_fn=val_collate_fn)
@@ -68,7 +67,7 @@ def main(args):
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scaler = torch.cuda.amp.GradScaler() if args.amp else None
-    lr_scheduler = tohrc.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_steps, gamma=args.lr_gamma)
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_steps, gamma=args.lr_gamma)
     start_epoch = 0
     if args.resume_path != "":
         checkpoint = torch.load(args.resume_path)
